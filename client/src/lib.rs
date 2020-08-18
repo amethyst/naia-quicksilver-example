@@ -1,23 +1,30 @@
 
-#![feature(custom_inner_attributes)]
+#[macro_use]
+extern crate cfg_if;
 
-pub mod app;
+extern crate log;
 
-#[cfg(feature = "web-sys")]
-use wasm_bindgen::prelude::*;
+extern crate quicksilver;
 
-#[cfg(feature = "web-sys")]
-use quicksilver::{run, Settings};
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        mod app;
 
-#[cfg(feature = "web-sys")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+        use wasm_bindgen::prelude::*;
 
-#[cfg(feature = "web-sys")]
-#[wasm_bindgen(start)]
-pub fn main_js() {
-    #[cfg(debug_assertions)]
-    console_error_panic_hook::set_once();
+        use quicksilver::{run, Settings};
+        use app::app;
 
-    run(Settings::default(), app::app)
+        # [wasm_bindgen(start)]
+        pub fn main_js() {
+            web_logger::custom_init(web_logger::Config { level: log::Level::Info });
+            run(
+                Settings {
+                    title: "naia Quicksilver examplE",
+                    ..Settings::default()
+                },
+                app,
+            );
+        }
+    } else {}
 }

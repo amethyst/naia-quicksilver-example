@@ -23,7 +23,7 @@ module.exports = {
 
     new WasmPackPlugin({
       crateDirectory: __dirname,
-      extraArgs: "--out-name index -- --features web-sys"
+      extraArgs: "--out-name index --"
     }),
   ]
 };
