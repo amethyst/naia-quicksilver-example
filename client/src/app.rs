@@ -3,13 +3,12 @@ extern crate quicksilver;
 use quicksilver::{
     graphics::{Color, Graphics, Image},
     geom::{Rectangle, Vector},
-    lifecycle::{ EventStream, Window },
+    Window,
     Result,
+    Input,
 };
 
-use gaia::Client as GaiaClient;
-
-pub async fn app(window: Window, mut gfx: Graphics, mut events: EventStream) -> Result<()> {
+pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
     let image = Image::load(&gfx, "head.png").await?;
     gfx.clear(Color::WHITE);
     // Draw the image with the top-left at (100, 100)
@@ -17,11 +16,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut events: EventStream) -> 
     gfx.draw_image(&image, region);
     gfx.present(&window)?;
 
-    let mut client: GaiaClient = GaiaClient::new();
-
     loop {
-        while let Some(_) = events.next_event().await {}
-
-        client.update();
+        while let Some(_) = input.next_event().await {}
     }
 }

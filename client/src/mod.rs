@@ -8,7 +8,7 @@ mod app;
 pub fn main() {
     run(
         Settings {
-            title: "Cyberlith",
+            title: "naia Quicksilver example",
             ..Settings::default()
         },
         app::app,
