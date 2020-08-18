@@ -1,0 +1,9 @@
+[package]
+name = "naia-qs-client-example"
+version = "0.1.0"
+authors = ["connorcarpenter <connorcarpenter@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+gaia = { path = "../gaia" } # { git = "https://github.com/connorcarpenter/gaia.git" }
+quicksilver = { version = "0.4.0-alpha0.3" }
