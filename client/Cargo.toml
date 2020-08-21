@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 naia-client = { version = "0.2.0" }
+naia-qs-example-shared = { path = "../shared" }
 quicksilver = { path = "../../quicksilver", features = [ "web-sys" ] } # currently quicksilver doesn't not run correctly using web-sys, hope to not have to run this locally in the future
 log = "0.4"
 cfg-if = "0.1.10"

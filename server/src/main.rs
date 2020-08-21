@@ -5,8 +5,8 @@ use simple_logger;
 
 use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, UserKey};
 
-use naia_example_shared::{
-    get_shared_config, manifest_load, ExampleEntity, ExampleEvent, PointEntity, StringEvent,
+use naia_qs_example_shared::{
+    get_shared_config, manifest_load, PointEntity, KeyEvent, AuthEvent, ExampleEvent, ExampleEntity,
 };
 
 use std::{cell::RefCell, net::SocketAddr, rc::Rc, time::Duration};
@@ -17,7 +17,7 @@ const SERVER_PORT: u16 = 14191;
 async fn main() {
     simple_logger::init_with_level(log::Level::Info).expect("A logger was already initialized");
 
-    info!("Naia Server Example Started");
+    info!("Naia Quicksilver Server Example Started");
 
     let current_ip_address = find_my_ip_address().expect("can't find ip address");
     let current_socket_address = SocketAddr::new(current_ip_address, SERVER_PORT);
@@ -55,32 +55,15 @@ async fn main() {
     let main_room_key = server.create_room();
 
     // Create 4 PointEntities, with a range of X values
-    let mut point_entities: Vec<Rc<RefCell<PointEntity>>> = Vec::new();
-
-    for (first, last) in [
-        ("alpha", "red"),
-        ("bravo", "blue"),
-        ("charlie", "green"),
-        ("delta", "yellow"),
-    ]
-    .iter()
-    {
-        let point_entity =
-            PointEntity::new((point_entities.len() * 4) as u8, 0, first, last).wrap();
-        point_entities.push(point_entity.clone());
-        let entity_key = server.register_entity(point_entity);
-        server.room_add_entity(&main_room_key, &entity_key);
-    }
+    let main_entity = PointEntity::new(16,16).wrap();
+    let entity_key = server.register_entity(main_entity);
+    server.room_add_entity(&main_room_key, &entity_key);
 
     // This method will be called every step to determine whether a given Entity
     // should be in scope for a given User
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
         ExampleEntity::PointEntity(point_entity) => {
-            let x = *point_entity.as_ref().borrow().x.get();
-            // Currently, a PointEntity is only in scope if it's X value is between 5 & 15.
-            // This could be configured to some value within a User's current viewport, for
-            // example
-            return x >= 5 && x <= 15;
+            return true;
         }
     })));
 
@@ -102,9 +85,8 @@ async fn main() {
                     ServerEvent::Event(user_key, event_type) => {
                         if let Some(user) = server.get_user(&user_key) {
                             match event_type {
-                                ExampleEvent::StringEvent(string_event) => {
-                                    let message = string_event.message.get();
-                                    info!("Naia Server recv <- {}: {}", user.address, message);
+                                ExampleEvent::KeyEvent(key_event) => {
+                                    info!("Naia Server recv <- {}", user.address);
                                 }
                                 _ => {}
                             }
@@ -113,31 +95,10 @@ async fn main() {
                     ServerEvent::Tick => {
                         // Game logic, updating of the world, should happen here
 
-                        // Event Sending
-                        let mut iter_vec: Vec<UserKey> = Vec::new();
-                        for (user_key, _) in server.users_iter() {
-                            iter_vec.push(user_key);
-                        }
-                        for user_key in iter_vec {
-                            let user = server.get_user(&user_key).unwrap();
-                            let new_message = format!("Server Packet ({})", tick_count);
-                            info!("Naia Server send -> {}: {}", user.address, new_message);
-
-                            let string_event = StringEvent::new(new_message);
-                            server.queue_event(&user_key, &string_event);
-                        }
-
-                        // Iterate through Point Entities, marching them from (0,0) to (20, N)
-                        for point_entity in &point_entities {
-                            point_entity.borrow_mut().step();
-                        }
-
                         // VERY IMPORTANT! Calling this actually sends all Entity/Event data packets
                         // to all Clients that require it. If you don't call this method, the Server
                         // will never communicate with it's connected Clients
                         server.send_all_updates().await;
-
-                        tick_count = tick_count.wrapping_add(1);
                     }
                 }
             }
