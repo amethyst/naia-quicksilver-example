@@ -8,14 +8,19 @@ use quicksilver::{
     run, Result, Settings, Window,
 };
 
+pub fn get_settings() -> Settings {
+    let mut settings = Settings::default();
+    settings.size = Vector::new(640.0, 360.0);
+    settings
+}
+
 pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
     // Clear the screen to a blank, white color
     gfx.clear(Color::BLACK);
     // Paint a blue square with a red outline in the center of our screen
     // It should have a top-left of (350, 100) and a size of (150, 100)
-    let rect = Rectangle::new(Vector::new(350.0, 100.0), Vector::new(100.0, 100.0));
-    gfx.fill_rect(&rect, Color::BLUE);
-    gfx.stroke_rect(&rect, Color::RED);
+    let rect = Rectangle::new(Vector::new(350.0, 100.0), Vector::new(32.0, 32.0));
+    gfx.fill_rect(&rect, Color::WHITE);
     // Send the data to be drawn
     gfx.present(&window)?;
     loop {
