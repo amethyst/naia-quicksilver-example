@@ -3,3 +3,4 @@
 .idea/*
 /Cargo.lock
 node_modules
+/client/target
