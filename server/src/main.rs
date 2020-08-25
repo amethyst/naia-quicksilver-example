@@ -3,13 +3,13 @@ extern crate log;
 
 use simple_logger;
 
-use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, UserKey};
+use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent};
 
 use naia_qs_example_shared::{
-    get_shared_config, manifest_load, PointEntity, KeyEvent, AuthEvent, ExampleEvent, ExampleEntity,
+    get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity,
 };
 
-use std::{cell::RefCell, net::SocketAddr, rc::Rc, time::Duration};
+use std::{net::SocketAddr, rc::Rc, time::Duration};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -50,12 +50,10 @@ async fn main() {
     server.room_add_entity(&main_room_key, &entity_key);
 
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
-        ExampleEntity::PointEntity(point_entity) => {
+        ExampleEntity::PointEntity(_point_entity) => {
             return true;
         }
     })));
-
-    let mut tick_count: u32 = 0;
 
     loop {
         match server.receive().await {
@@ -73,7 +71,7 @@ async fn main() {
                     ServerEvent::Event(user_key, event_type) => {
                         if let Some(user) = server.get_user(&user_key) {
                             match event_type {
-                                ExampleEvent::KeyEvent(key_event) => {
+                                ExampleEvent::KeyEvent(_key_event) => {
                                     info!("Naia Server recv <- {}", user.address);
                                 }
                                 _ => {}

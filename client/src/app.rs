@@ -6,7 +6,7 @@ use std::{net::SocketAddr, time::Duration};
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
 use naia_qs_example_shared::{
-    get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyEvent,
+    get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent,
 };
 
 const SERVER_PORT: u16 = 14191;
@@ -25,7 +25,7 @@ use quicksilver::{
     geom::{Rectangle, Vector},
     graphics::{Color, Graphics},
     input::{Input, Key},
-    run, Result, Settings, Window,
+    Result, Settings, Window,
 };
 
 pub fn get_settings() -> Settings {
@@ -36,7 +36,7 @@ pub fn get_settings() -> Settings {
 
 pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<()> {
 
-    /// Naia
+    // Naia
 
     info!("Naia Client Example Started");
 
@@ -65,10 +65,9 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             Some(auth),
         );
 
-    /// Quicksilver
+    // Quicksilver
 
-    let mut square_position = Vector::new(350.0, 100.0);
-    let mut square_size = Vector::new(32.0, 32.0);
+    let square_size = Vector::new(32.0, 32.0);
     const SQUARE_SPEED: f32 = 2.0;
 
     loop {
@@ -124,25 +123,37 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
         }
 
         // input
-        if input.key_down(Key::A) {
-            square_position.x -= SQUARE_SPEED;
-        }
-        if input.key_down(Key::D) {
-            square_position.x += SQUARE_SPEED;
-        }
-        if input.key_down(Key::W) {
-            square_position.y -= SQUARE_SPEED;
-        }
-        if input.key_down(Key::S) {
-            square_position.y += SQUARE_SPEED;
-        }
+//        if input.key_down(Key::A) {
+//            square_position.x -= SQUARE_SPEED;
+//        }
+//        if input.key_down(Key::D) {
+//            square_position.x += SQUARE_SPEED;
+//        }
+//        if input.key_down(Key::W) {
+//            square_position.y -= SQUARE_SPEED;
+//        }
+//        if input.key_down(Key::S) {
+//            square_position.y += SQUARE_SPEED;
+//        }
 
         // drawing
         gfx.clear(Color::BLACK);
-        let rect = Rectangle::new(square_position, square_size);
-        gfx.fill_rect(&rect, Color::WHITE);
+
+        if let Some(iter) = client.entities_iter() {
+            for (key, entity) in iter {
+                match entity {
+                    ExampleEntity::PointEntity(point_entity) => {
+                        let rect = Rectangle::new(
+                            Vector::new(
+                                f32::from(*(point_entity.as_ref().borrow().x.get())),
+                                f32::from(*(point_entity.as_ref().borrow().y.get()))),
+                            square_size);
+                        gfx.fill_rect(&rect, Color::WHITE);
+                    }
+                }
+            }
+        }
+
         gfx.present(&window)?;
     }
-
-    Ok(())
 }

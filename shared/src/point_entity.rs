@@ -1,4 +1,3 @@
-use nanoserde::{DeBin, SerBin};
 
 use naia_derive::Entity;
 use naia_shared::{Entity, Property};
