@@ -21,12 +21,7 @@ cfg_if! {
 
 extern crate quicksilver;
 
-use quicksilver::{
-    geom::{Rectangle, Vector},
-    graphics::{Color, Graphics},
-    input::{Input, Key},
-    Result, Settings, Window,
-};
+use quicksilver::{geom::{Rectangle, Vector}, graphics::{Color, Graphics}, input::{Input, Key}, Result, Settings, Window, Timer};
 
 pub fn get_settings() -> Settings {
     let mut settings = Settings::default();
@@ -70,55 +65,60 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     let square_size = Vector::new(32.0, 32.0);
     const SQUARE_SPEED: f32 = 2.0;
 
+    let mut update_timer = Timer::time_per_second(30.0);
+    let mut draw_timer = Timer::time_per_second(60.0);
+
     loop {
         while let Some(_) = input.next_event().await {}
 
         // naia update
-        match client.receive() {
-            Ok(event) => {
-                match event {
-                    ClientEvent::Connection => {
-                        info!("Client connected to: {}", client.server_address());
-                    }
-                    ClientEvent::Disconnection => {
-                        info!("Client disconnected from: {}", client.server_address());
-                    }
-                    ClientEvent::CreateEntity(local_key) => {
-                        if let Some(entity) = client.get_entity(local_key) {
-                            match entity {
-                                ExampleEntity::PointEntity(point_entity) => {
-                                    info!("creation of point entity with key: {}, x: {}, y: {}",
-                                          local_key,
-                                          point_entity.as_ref().borrow().x.get(),
-                                          point_entity.as_ref().borrow().y.get(),
-                                    );
+        while update_timer.tick() {
+            match client.receive() {
+                Ok(event) => {
+                    match event {
+                        ClientEvent::Connection => {
+                            info!("Client connected to: {}", client.server_address());
+                        }
+                        ClientEvent::Disconnection => {
+                            info!("Client disconnected from: {}", client.server_address());
+                        }
+                        ClientEvent::CreateEntity(local_key) => {
+                            if let Some(entity) = client.get_entity(local_key) {
+                                match entity {
+                                    ExampleEntity::PointEntity(point_entity) => {
+                                        info!("creation of point entity with key: {}, x: {}, y: {}",
+                                              local_key,
+                                              point_entity.as_ref().borrow().x.get(),
+                                              point_entity.as_ref().borrow().y.get(),
+                                        );
+                                    }
                                 }
                             }
                         }
-                    }
-                    ClientEvent::UpdateEntity(local_key) => {
-                        if let Some(entity) = client.get_entity(local_key) {
-                            match entity {
-                                ExampleEntity::PointEntity(point_entity) => {
-                                    info!("update of point entity with key: {}, x:{}, y: {}",
-                                          local_key,
-                                          point_entity.as_ref().borrow().x.get(),
-                                          point_entity.as_ref().borrow().y.get());
+                        ClientEvent::UpdateEntity(local_key) => {
+                            if let Some(entity) = client.get_entity(local_key) {
+                                match entity {
+                                    ExampleEntity::PointEntity(point_entity) => {
+                                        info!("update of point entity with key: {}, x:{}, y: {}",
+                                              local_key,
+                                              point_entity.as_ref().borrow().x.get(),
+                                              point_entity.as_ref().borrow().y.get());
+                                    }
                                 }
                             }
                         }
+                        ClientEvent::DeleteEntity(local_key) => {
+                            info!("deletion of point entity with key: {}", local_key);
+                        }
+                        ClientEvent::None => {
+                            //info!("Client non-event");
+                        }
+                        _ => {}
                     }
-                    ClientEvent::DeleteEntity(local_key) => {
-                        info!("deletion of point entity with key: {}", local_key);
-                    }
-                    ClientEvent::None => {
-                        //info!("Client non-event");
-                    }
-                    _ => {}
                 }
-            }
-            Err(err) => {
-                info!("Client Error: {}", err);
+                Err(err) => {
+                    info!("Client Error: {}", err);
+                }
             }
         }
 
@@ -137,23 +137,25 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 //        }
 
         // drawing
-        gfx.clear(Color::BLACK);
+        if draw_timer.exhaust().is_some() {
+            gfx.clear(Color::BLACK);
 
-        if let Some(iter) = client.entities_iter() {
-            for (key, entity) in iter {
-                match entity {
-                    ExampleEntity::PointEntity(point_entity) => {
-                        let rect = Rectangle::new(
-                            Vector::new(
-                                f32::from(*(point_entity.as_ref().borrow().x.get())),
-                                f32::from(*(point_entity.as_ref().borrow().y.get()))),
-                            square_size);
-                        gfx.fill_rect(&rect, Color::WHITE);
+            if let Some(iter) = client.entities_iter() {
+                for (key, entity) in iter {
+                    match entity {
+                        ExampleEntity::PointEntity(point_entity) => {
+                            let rect = Rectangle::new(
+                                Vector::new(
+                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
+                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
+                                square_size);
+                            gfx.fill_rect(&rect, Color::WHITE);
+                        }
                     }
                 }
             }
-        }
 
-        gfx.present(&window)?;
+            gfx.present(&window)?;
+        }
     }
 }
