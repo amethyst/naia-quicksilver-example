@@ -1,9 +1,9 @@
 use naia_derive::EventType;
 
-use crate::{AuthEvent, KeyEvent};
+use crate::{AuthEvent, KeyCommand};
 
 #[derive(EventType, Clone)]
 pub enum ExampleEvent {
-    KeyEvent(KeyEvent),
+    KeyCommand(KeyCommand),
     AuthEvent(AuthEvent),
 }

@@ -46,7 +46,7 @@ async fn main() {
     let main_room_key = server.create_room();
 
     let main_entity = PointEntity::new(16,16).wrap();
-    let entity_key = server.register_entity(main_entity);
+    let entity_key = server.register_entity(main_entity.clone());
     server.room_add_entity(&main_room_key, &entity_key);
 
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
@@ -54,6 +54,8 @@ async fn main() {
             return true;
         }
     })));
+
+    let SQUARE_SPEED: u16 = 20;
 
     loop {
         match server.receive().await {
@@ -71,15 +73,43 @@ async fn main() {
                     ServerEvent::Event(user_key, event_type) => {
                         if let Some(user) = server.get_user(&user_key) {
                             match event_type {
-                                ExampleEvent::KeyEvent(_key_event) => {
-                                    info!("Naia Server recv <- {}", user.address);
-                                }
-                                _ => {}
+                                _ => {} // No events registered..
                             }
+                        }
+                    }
+                    ServerEvent::Command(user_key, event_type) => {
+                        match event_type {
+                            ExampleEvent::KeyCommand(key_command) => {
+
+                                if *key_command.w.get() || *key_command.s.get() || *key_command.a.get() || *key_command.d.get() {
+                                    info!("command received");
+                                } else {
+                                    info!("empty command received");
+                                }
+
+                                if let Ok(mut entity_ref) = main_entity.try_borrow_mut() {
+                                    let old_x = *entity_ref.x.get();
+                                    let old_y = *entity_ref.y.get();
+                                    if *key_command.w.get() {
+                                        entity_ref.y.set(old_y.wrapping_sub(SQUARE_SPEED))
+                                    }
+                                    if *key_command.s.get() {
+                                        entity_ref.y.set(old_y.wrapping_add(SQUARE_SPEED))
+                                    }
+                                    if *key_command.a.get() {
+                                        entity_ref.x.set(old_x.wrapping_sub(SQUARE_SPEED))
+                                    }
+                                    if *key_command.d.get() {
+                                        entity_ref.x.set(old_x.wrapping_add(SQUARE_SPEED))
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
                     }
                     ServerEvent::Tick => {
                         server.send_all_updates().await;
+                        //info!("tick");
                     }
                 }
             }

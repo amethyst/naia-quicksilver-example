@@ -5,9 +5,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
-use naia_qs_example_shared::{
-    get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent,
-};
+use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -73,68 +71,69 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
         // naia update
         while update_timer.tick() {
-            match client.receive() {
-                Ok(event) => {
-                    match event {
-                        ClientEvent::Connection => {
-                            info!("Client connected to: {}", client.server_address());
-                        }
-                        ClientEvent::Disconnection => {
-                            info!("Client disconnected from: {}", client.server_address());
-                        }
-                        ClientEvent::CreateEntity(local_key) => {
-                            if let Some(entity) = client.get_entity(local_key) {
-                                match entity {
-                                    ExampleEntity::PointEntity(point_entity) => {
-                                        info!("creation of point entity with key: {}, x: {}, y: {}",
-                                              local_key,
-                                              point_entity.as_ref().borrow().x.get(),
-                                              point_entity.as_ref().borrow().y.get(),
-                                        );
+            loop {
+                match client.receive() {
+                    Some(result) => match result {
+                        Ok(event) => {
+                            match event {
+                                ClientEvent::Connection => {
+                                    info!("Client connected to: {}", client.server_address());
+                                }
+                                ClientEvent::Disconnection => {
+                                    info!("Client disconnected from: {}", client.server_address());
+                                }
+                                ClientEvent::CreateEntity(local_key) => {
+                                    if let Some(entity) = client.get_entity(local_key) {
+                                        match entity {
+                                            ExampleEntity::PointEntity(point_entity) => {
+                                                info!("creation of point entity with key: {}, x: {}, y: {}",
+                                                      local_key,
+                                                      point_entity.as_ref().borrow().x.get(),
+                                                      point_entity.as_ref().borrow().y.get(),
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                ClientEvent::UpdateEntity(local_key) => {
+                                    if let Some(entity) = client.get_entity(local_key) {
+                                        match entity {
+                                            ExampleEntity::PointEntity(point_entity) => {
+                                                info!("update of point entity with key: {}, x:{}, y: {}",
+                                                      local_key,
+                                                      point_entity.as_ref().borrow().x.get(),
+                                                      point_entity.as_ref().borrow().y.get());
+                                            }
+                                        }
+                                    }
+                                }
+                                ClientEvent::DeleteEntity(local_key) => {
+                                    info!("deletion of point entity with key: {}", local_key);
+                                }
+                                ClientEvent::Event(event) => {
+                                    info!("received an event?");
+                                }
+                                ClientEvent::Tick => {
+                                    let w = input.key_down(Key::W);
+                                    let s = input.key_down(Key::S);
+                                    let a = input.key_down(Key::A);
+                                    let d = input.key_down(Key::D);
+                                    if w || s || a || d {
+                                        info!("sent command");
+                                        let new_command = KeyCommand::new(w, s, a, d);
+                                        client.send_command(&new_command);
                                     }
                                 }
                             }
                         }
-                        ClientEvent::UpdateEntity(local_key) => {
-                            if let Some(entity) = client.get_entity(local_key) {
-                                match entity {
-                                    ExampleEntity::PointEntity(point_entity) => {
-                                        info!("update of point entity with key: {}, x:{}, y: {}",
-                                              local_key,
-                                              point_entity.as_ref().borrow().x.get(),
-                                              point_entity.as_ref().borrow().y.get());
-                                    }
-                                }
-                            }
+                        Err(err) => {
+                            info!("Client Error: {}", err);
                         }
-                        ClientEvent::DeleteEntity(local_key) => {
-                            info!("deletion of point entity with key: {}", local_key);
-                        }
-                        ClientEvent::None => {
-                            //info!("Client non-event");
-                        }
-                        _ => {}
-                    }
-                }
-                Err(err) => {
-                    info!("Client Error: {}", err);
+                    },
+                    None => { break; }
                 }
             }
         }
-
-        // input
-//        if input.key_down(Key::A) {
-//            square_position.x -= SQUARE_SPEED;
-//        }
-//        if input.key_down(Key::D) {
-//            square_position.x += SQUARE_SPEED;
-//        }
-//        if input.key_down(Key::W) {
-//            square_position.y -= SQUARE_SPEED;
-//        }
-//        if input.key_down(Key::S) {
-//            square_position.y += SQUARE_SPEED;
-//        }
 
         // drawing
         if draw_timer.exhaust().is_some() {
