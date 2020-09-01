@@ -66,6 +66,8 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     let mut update_timer = Timer::time_per_second(30.0);
     let mut draw_timer = Timer::time_per_second(60.0);
 
+    let mut pawn_key: u16 = 999;
+
     loop {
         while let Some(_) = input.next_event().await {}
 
@@ -83,6 +85,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     info!("Client disconnected from: {}", client.server_address());
                                 }
                                 ClientEvent::CreateEntity(local_key) => {
+                                    pawn_key = local_key;
                                     if let Some(entity) = client.get_entity(local_key) {
                                         match entity {
                                             ExampleEntity::PointEntity(point_entity) => {
@@ -110,9 +113,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                 ClientEvent::DeleteEntity(local_key) => {
                                     info!("deletion of point entity with key: {}", local_key);
                                 }
-                                ClientEvent::Event(event) => {
-                                    info!("received an event?");
-                                }
                                 ClientEvent::Tick => {
                                     let w = input.key_down(Key::W);
                                     let s = input.key_down(Key::S);
@@ -121,9 +121,10 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     if w || s || a || d {
                                         info!("sent command");
                                         let new_command = KeyCommand::new(w, s, a, d);
-                                        client.send_command(&new_command);
+                                        client.send_command(pawn_key, &new_command);
                                     }
                                 }
+                                _ => {}
                             }
                         }
                         Err(err) => {
@@ -140,7 +141,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             gfx.clear(Color::BLACK);
 
             if let Some(iter) = client.entities_iter() {
-                for (key, entity) in iter {
+                for (_, entity) in iter {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let rect = Rectangle::new(

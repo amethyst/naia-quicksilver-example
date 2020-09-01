@@ -46,7 +46,7 @@ async fn main() {
     let main_room_key = server.create_room();
 
     let main_entity = PointEntity::new(16,16).wrap();
-    let entity_key = server.register_entity(main_entity.clone());
+    let entity_key = server.register_entity(ExampleEntity::PointEntity(main_entity.clone()));
     server.room_add_entity(&main_room_key, &entity_key);
 
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
@@ -55,7 +55,7 @@ async fn main() {
         }
     })));
 
-    let SQUARE_SPEED: u16 = 20;
+    const SQUARE_SPEED: u16 = 10;
 
     loop {
         match server.receive().await {
@@ -65,20 +65,14 @@ async fn main() {
                         server.room_add_user(&main_room_key, &user_key);
                         if let Some(user) = server.get_user(&user_key) {
                             info!("Naia Server connected to: {}", user.address);
+                            server.assign_pawn(&user_key, &entity_key);
                         }
                     }
                     ServerEvent::Disconnection(_, user) => {
                         info!("Naia Server disconnected from: {:?}", user.address);
                     }
-                    ServerEvent::Event(user_key, event_type) => {
-                        if let Some(user) = server.get_user(&user_key) {
-                            match event_type {
-                                _ => {} // No events registered..
-                            }
-                        }
-                    }
-                    ServerEvent::Command(user_key, event_type) => {
-                        match event_type {
+                    ServerEvent::Command(_, _, pawn_type) => {
+                        match pawn_type {
                             ExampleEvent::KeyCommand(key_command) => {
 
                                 if *key_command.w.get() || *key_command.s.get() || *key_command.a.get() || *key_command.d.get() {
@@ -87,20 +81,30 @@ async fn main() {
                                     info!("empty command received");
                                 }
 
-                                if let Ok(mut entity_ref) = main_entity.try_borrow_mut() {
-                                    let old_x = *entity_ref.x.get();
-                                    let old_y = *entity_ref.y.get();
-                                    if *key_command.w.get() {
-                                        entity_ref.y.set(old_y.wrapping_sub(SQUARE_SPEED))
-                                    }
-                                    if *key_command.s.get() {
-                                        entity_ref.y.set(old_y.wrapping_add(SQUARE_SPEED))
-                                    }
-                                    if *key_command.a.get() {
-                                        entity_ref.x.set(old_x.wrapping_sub(SQUARE_SPEED))
-                                    }
-                                    if *key_command.d.get() {
-                                        entity_ref.x.set(old_x.wrapping_add(SQUARE_SPEED))
+                                if let Some(typed_entity) = server.get_entity(entity_key) {
+                                    match typed_entity {
+                                        ExampleEntity::PointEntity(entity) => {
+
+                                            let old_x: u16;
+                                            let old_y: u16;
+                                            {
+                                                let entity_ref = entity.borrow();
+                                                old_x = *(entity_ref.x.get());
+                                                old_y = *(entity_ref.y.get());
+                                            }
+                                            if *key_command.w.get() {
+                                                entity.borrow_mut().y.set(old_y.wrapping_sub(SQUARE_SPEED))
+                                            }
+                                            if *key_command.s.get() {
+                                                entity.borrow_mut().y.set(old_y.wrapping_add(SQUARE_SPEED))
+                                            }
+                                            if *key_command.a.get() {
+                                                entity.borrow_mut().x.set(old_x.wrapping_sub(SQUARE_SPEED))
+                                            }
+                                            if *key_command.d.get() {
+                                                entity.borrow_mut().x.set(old_x.wrapping_add(SQUARE_SPEED))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -111,6 +115,7 @@ async fn main() {
                         server.send_all_updates().await;
                         //info!("tick");
                     }
+                    _ => {}
                 }
             }
             Err(error) => {
