@@ -85,7 +85,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     info!("Client disconnected from: {}", client.server_address());
                                 }
                                 ClientEvent::CreateEntity(local_key) => {
-                                    pawn_key = local_key;
                                     if let Some(entity) = client.get_entity(local_key) {
                                         match entity {
                                             ExampleEntity::PointEntity(point_entity) => {
@@ -123,6 +122,14 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                         let new_command = KeyCommand::new(w, s, a, d);
                                         client.send_command(pawn_key, &new_command);
                                     }
+                                }
+                                ClientEvent::AssignPawn(local_key) => {
+                                    pawn_key = local_key;
+                                    info!("assign pawn");
+                                }
+                                ClientEvent::UnassignPawn(local_key) => {
+                                    pawn_key = 999;
+                                    info!("unassign pawn");
                                 }
                                 _ => {}
                             }
