@@ -6,7 +6,7 @@ use simple_logger;
 use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent};
 
 use naia_qs_example_shared::{
-    get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity,
+    get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity, shared_behavior,
 };
 
 use std::{net::SocketAddr, rc::Rc, time::Duration};
@@ -45,9 +45,9 @@ async fn main() {
 
     let main_room_key = server.create_room();
 
-    let main_entity = PointEntity::new(16,16).wrap();
-    let entity_key = server.register_entity(ExampleEntity::PointEntity(main_entity.clone()));
-    server.room_add_entity(&main_room_key, &entity_key);
+    let main_entity = PointEntity::new(16, 16).wrap();
+    let main_entity_key = server.register_entity(ExampleEntity::PointEntity(main_entity.clone()));
+    server.room_add_entity(&main_room_key, &main_entity_key);
 
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
         ExampleEntity::PointEntity(_point_entity) => {
@@ -65,45 +65,19 @@ async fn main() {
                         server.room_add_user(&main_room_key, &user_key);
                         if let Some(user) = server.get_user(&user_key) {
                             info!("Naia Server connected to: {}", user.address);
-                            server.assign_pawn(&user_key, &entity_key);
+                            server.assign_pawn(&user_key, &main_entity_key);
                         }
                     }
                     ServerEvent::Disconnection(_, user) => {
                         info!("Naia Server disconnected from: {:?}", user.address);
                     }
-                    ServerEvent::Command(_, _, pawn_type) => {
+                    ServerEvent::Command(_, entity_key, pawn_type) => {
                         match pawn_type {
                             ExampleEvent::KeyCommand(key_command) => {
-
-                                if *key_command.w.get() || *key_command.s.get() || *key_command.a.get() || *key_command.d.get() {
-                                    info!("command received");
-                                } else {
-                                    info!("empty command received");
-                                }
-
                                 if let Some(typed_entity) = server.get_entity(entity_key) {
                                     match typed_entity {
                                         ExampleEntity::PointEntity(entity) => {
-
-                                            let old_x: u16;
-                                            let old_y: u16;
-                                            {
-                                                let entity_ref = entity.borrow();
-                                                old_x = *(entity_ref.x.get());
-                                                old_y = *(entity_ref.y.get());
-                                            }
-                                            if *key_command.w.get() {
-                                                entity.borrow_mut().y.set(old_y.wrapping_sub(SQUARE_SPEED))
-                                            }
-                                            if *key_command.s.get() {
-                                                entity.borrow_mut().y.set(old_y.wrapping_add(SQUARE_SPEED))
-                                            }
-                                            if *key_command.a.get() {
-                                                entity.borrow_mut().x.set(old_x.wrapping_sub(SQUARE_SPEED))
-                                            }
-                                            if *key_command.d.get() {
-                                                entity.borrow_mut().x.set(old_x.wrapping_add(SQUARE_SPEED))
-                                            }
+                                            shared_behavior::process_command(&key_command, entity);
                                         }
                                     }
                                 }

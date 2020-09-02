@@ -8,6 +8,7 @@ mod manifest_load;
 mod point_entity;
 mod shared_config;
 mod key_command;
+pub mod shared_behavior;
 
 pub use auth_event::AuthEvent;
 pub use example_entity::ExampleEntity;

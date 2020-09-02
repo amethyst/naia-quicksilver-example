@@ -5,7 +5,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
-use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand};
+use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -61,7 +61,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     // Quicksilver
 
     let square_size = Vector::new(32.0, 32.0);
-    const SQUARE_SPEED: f32 = 2.0;
 
     let mut update_timer = Timer::time_per_second(30.0);
     let mut draw_timer = Timer::time_per_second(60.0);
@@ -130,6 +129,20 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                 ClientEvent::UnassignPawn(local_key) => {
                                     pawn_key = 999;
                                     info!("unassign pawn");
+                                }
+                                ClientEvent::Command(entity_key, pawn_type) => {
+                                    match pawn_type {
+                                        ExampleEvent::KeyCommand(key_command) => {
+                                            if let Some(typed_entity) = client.get_entity(entity_key) {
+                                                match typed_entity {
+                                                    ExampleEntity::PointEntity(entity) => {
+                                                        shared_behavior::process_command(&key_command, entity);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => {}
+                                    }
                                 }
                                 _ => {}
                             }
