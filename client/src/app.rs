@@ -100,10 +100,10 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     if let Some(entity) = client.get_entity(local_key) {
                                         match entity {
                                             ExampleEntity::PointEntity(point_entity) => {
-                                                info!("update of point entity with key: {}, x:{}, y: {}",
-                                                      local_key,
-                                                      point_entity.as_ref().borrow().x.get(),
-                                                      point_entity.as_ref().borrow().y.get());
+//                                                info!("update of point entity with key: {}, x:{}, y: {}",
+//                                                      local_key,
+//                                                      point_entity.as_ref().borrow().x.get(),
+//                                                      point_entity.as_ref().borrow().y.get());
                                             }
                                         }
                                     }
@@ -117,7 +117,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     let a = input.key_down(Key::A);
                                     let d = input.key_down(Key::D);
                                     if w || s || a || d {
-                                        info!("sent command");
                                         let new_command = KeyCommand::new(w, s, a, d);
                                         client.send_command(pawn_key, &new_command);
                                     }
@@ -130,10 +129,10 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     pawn_key = 999;
                                     info!("unassign pawn");
                                 }
-                                ClientEvent::Command(entity_key, pawn_type) => {
-                                    match pawn_type {
+                                ClientEvent::Command(pawn_key, command_type) => {
+                                    match command_type {
                                         ExampleEvent::KeyCommand(key_command) => {
-                                            if let Some(typed_entity) = client.get_entity(entity_key) {
+                                            if let Some(typed_entity) = client.get_pawn(pawn_key) {
                                                 match typed_entity {
                                                     ExampleEntity::PointEntity(entity) => {
                                                         shared_behavior::process_command(&key_command, entity);
@@ -161,6 +160,21 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             gfx.clear(Color::BLACK);
 
             if let Some(iter) = client.entities_iter() {
+                for (_, entity) in iter {
+                    match entity {
+                        ExampleEntity::PointEntity(point_entity) => {
+                            let rect = Rectangle::new(
+                                Vector::new(
+                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
+                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
+                                square_size);
+                            gfx.fill_rect(&rect, Color::RED);
+                        }
+                    }
+                }
+            }
+
+            if let Some(iter) = client.pawns_iter() {
                 for (_, entity) in iter {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {

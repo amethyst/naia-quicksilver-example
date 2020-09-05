@@ -8,14 +8,14 @@ use std::{
 
 use crate::{PointEntity, KeyCommand};
 
-const SQUARE_SPEED: u16 = 10;
+const SQUARE_SPEED: u16 = 32;
 
 pub fn process_command(key_command: &KeyCommand, point_entity: &Rc<RefCell<PointEntity>>) {
-    if *key_command.w.get() || *key_command.s.get() || *key_command.a.get() || *key_command.d.get() {
-        info!("command received");
-    } else {
-        info!("empty command received");
-    }
+//    if *key_command.w.get() || *key_command.s.get() || *key_command.a.get() || *key_command.d.get() {
+//        info!("command received");
+//    } else {
+//        info!("empty command received");
+//    }
 
     let old_x: u16;
     let old_y: u16;

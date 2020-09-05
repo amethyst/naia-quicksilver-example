@@ -55,8 +55,6 @@ async fn main() {
         }
     })));
 
-    const SQUARE_SPEED: u16 = 10;
-
     loop {
         match server.receive().await {
             Ok(event) => {
@@ -71,8 +69,8 @@ async fn main() {
                     ServerEvent::Disconnection(_, user) => {
                         info!("Naia Server disconnected from: {:?}", user.address);
                     }
-                    ServerEvent::Command(_, entity_key, pawn_type) => {
-                        match pawn_type {
+                    ServerEvent::Command(_, entity_key, command_type) => {
+                        match command_type {
                             ExampleEvent::KeyCommand(key_command) => {
                                 if let Some(typed_entity) = server.get_entity(entity_key) {
                                     match typed_entity {
