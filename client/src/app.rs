@@ -20,10 +20,11 @@ cfg_if! {
 extern crate quicksilver;
 
 use quicksilver::{geom::{Rectangle, Vector}, graphics::{Color, Graphics}, input::{Input, Key}, Result, Settings, Window, Timer};
+use quicksilver::geom::Circle;
 
 pub fn get_settings() -> Settings {
     let mut settings = Settings::default();
-    settings.size = Vector::new(640.0, 360.0);
+    settings.size = Vector::new(1280.0, 720.0);
     settings
 }
 
@@ -175,7 +176,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             }
 
             if let Some(iter) = client.pawns_iter() {
-                for (_, entity) in iter {
+                for (key, entity) in iter {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let rect = Rectangle::new(
@@ -186,6 +187,23 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                             gfx.fill_rect(&rect, Color::WHITE);
                         }
                     }
+                }
+            }
+
+            let mut history_positions = Vec::new();
+            if client.fill_history(&mut history_positions) {
+                for entity in history_positions {
+                    match entity {
+                        ExampleEntity::PointEntity(point_entity) => {
+                            let circle = Circle::new(
+                                Vector::new(
+                                    f32::from(*(point_entity.as_ref().borrow().x.get())) + 16.0,
+                                    f32::from(*(point_entity.as_ref().borrow().y.get())) + 16.0),
+                                4.0);
+                            gfx.stroke_circle(&circle, Color::YELLOW);
+                        }
+                    }
+
                 }
             }
 
