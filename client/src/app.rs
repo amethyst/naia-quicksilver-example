@@ -97,18 +97,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                         }
                                     }
                                 }
-                                ClientEvent::UpdateEntity(local_key) => {
-                                    if let Some(entity) = client.get_entity(local_key) {
-                                        match entity {
-                                            ExampleEntity::PointEntity(point_entity) => {
-//                                                info!("update of point entity with key: {}, x:{}, y: {}",
-//                                                      local_key,
-//                                                      point_entity.as_ref().borrow().x.get(),
-//                                                      point_entity.as_ref().borrow().y.get());
-                                            }
-                                        }
-                                    }
-                                }
                                 ClientEvent::DeleteEntity(local_key) => {
                                     info!("deletion of point entity with key: {}", local_key);
                                 }
@@ -126,7 +114,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     pawn_key = local_key;
                                     info!("assign pawn");
                                 }
-                                ClientEvent::UnassignPawn(local_key) => {
+                                ClientEvent::UnassignPawn(_) => {
                                     pawn_key = 999;
                                     info!("unassign pawn");
                                 }
@@ -176,7 +164,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             }
 
             if let Some(iter) = client.pawns_iter() {
-                for (key, entity) in iter {
+                for (_, entity) in iter {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let rect = Rectangle::new(
@@ -190,9 +178,8 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                 }
             }
 
-            let mut history_positions = Vec::new();
-            if client.fill_history(&mut history_positions) {
-                for entity in history_positions {
+            if let Some(iter) = client.pawn_history_iter(&pawn_key) {
+                for entity in iter {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let circle = Circle::new(
@@ -203,7 +190,6 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                             gfx.stroke_circle(&circle, Color::YELLOW);
                         }
                     }
-
                 }
             }
 
