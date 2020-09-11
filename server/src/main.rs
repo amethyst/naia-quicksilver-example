@@ -3,7 +3,7 @@ extern crate log;
 
 use simple_logger;
 
-use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent};
+use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, random};
 
 use naia_qs_example_shared::{
     get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity, shared_behavior,
@@ -45,12 +45,8 @@ async fn main() {
 
     let main_room_key = server.create_room();
 
-    let main_entity = PointEntity::new(16, 16).wrap();
-    let main_entity_key = server.register_entity(ExampleEntity::PointEntity(main_entity.clone()));
-    server.room_add_entity(&main_room_key, &main_entity_key);
-
     server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
-        ExampleEntity::PointEntity(_point_entity) => {
+        ExampleEntity::PointEntity(_) => {
             return true;
         }
     })));
@@ -63,7 +59,14 @@ async fn main() {
                         server.room_add_user(&main_room_key, &user_key);
                         if let Some(user) = server.get_user(&user_key) {
                             info!("Naia Server connected to: {}", user.address);
-                            server.assign_pawn(&user_key, &main_entity_key);
+
+                            let x = random::gen_range_u32(0, 80) * 16;
+                            let y = random::gen_range_u32(0, 45) * 16;
+
+                            let new_entity = PointEntity::new(x as u16, y as u16).wrap();
+                            let new_entity_key = server.register_entity(ExampleEntity::PointEntity(new_entity.clone()));
+                            server.room_add_entity(&main_room_key, &new_entity_key);
+                            server.assign_pawn(&user_key, &new_entity_key);
                         }
                     }
                     ServerEvent::Disconnection(_, user) => {
