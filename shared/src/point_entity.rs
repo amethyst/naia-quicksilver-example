@@ -7,8 +7,8 @@ use crate::ExampleEntity;
 #[derive(Entity)]
 #[type_name = "ExampleEntity"]
 pub struct PointEntity {
-    pub x: Property<u16>,
-    pub y: Property<u16>,
+    #[interpolate] pub x: Property<u16>,
+    #[interpolate] pub y: Property<u16>,
 }
 
 impl PointEntity {
