@@ -3,7 +3,7 @@ use log::info;
 
 use std::{net::SocketAddr, time::Duration};
 
-use naia_client::{ClientConfig, ClientEvent, NaiaClient, Instant};
+use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
 use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior};
 
@@ -62,7 +62,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
     let square_size = Vector::new(32.0, 32.0);
 
-    let mut update_timer = Timer::time_per_second(60.0);
+    let mut update_timer = Timer::time_per_second(20.0);
     let mut draw_timer = Timer::time_per_second(60.0);
 
     let mut pawn_key: Option<u16> = None;
@@ -89,9 +89,8 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
         // naia update
         if update_timer.exhaust().is_some() {
-            let now = Instant::now();
             loop {
-                match client.receive(&now) {
+                match client.receive() {
                     Some(result) => match result {
                         Ok(event) => {
                             match event {
@@ -150,11 +149,11 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
         // drawing
         if draw_timer.exhaust().is_some() {
-            let now = Instant::now();
+            client.interpolate_entities();
             gfx.clear(Color::BLACK);
 
             for entity_key in client.entity_keys().unwrap() {
-                if let Some(entity) = client.get_entity(&entity_key, &now) {
+                if let Some(entity) = client.get_entity(&entity_key) {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let rect = Rectangle::new(
@@ -169,7 +168,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             }
 
             for pawn_key in client.pawn_keys().unwrap() {
-                if let Some(entity) = client.get_pawn(&pawn_key, &now) {
+                if let Some(entity) = client.get_pawn(&pawn_key) {
                     match entity {
                         ExampleEntity::PointEntity(point_entity) => {
                             let rect = Rectangle::new(
