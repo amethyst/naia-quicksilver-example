@@ -5,7 +5,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
-use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior};
+use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior, PointEntityColor};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -62,7 +62,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
     let square_size = Vector::new(32.0, 32.0);
 
-    let mut update_timer = Timer::time_per_second(20.0);
+    let mut update_timer = Timer::time_per_second(60.0);
     let mut draw_timer = Timer::time_per_second(60.0);
 
     let mut pawn_key: Option<u16> = None;
@@ -149,7 +149,9 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
         // drawing
         if draw_timer.exhaust().is_some() {
-            client.interpolate_entities();
+
+            client.frame_begin();
+
             gfx.clear(Color::BLACK);
 
             for entity_key in client.entity_keys().unwrap() {
@@ -161,7 +163,11 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                     f32::from(*(point_entity.as_ref().borrow().x.get())),
                                     f32::from(*(point_entity.as_ref().borrow().y.get()))),
                                 square_size);
-                            gfx.fill_rect(&rect, Color::RED);
+                            match point_entity.as_ref().borrow().color.get() {
+                                PointEntityColor::Red => gfx.fill_rect(&rect, Color::RED),
+                                PointEntityColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
+                                PointEntityColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
+                            }
                         }
                     }
                 }

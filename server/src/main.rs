@@ -6,7 +6,7 @@ use simple_logger;
 use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, random};
 
 use naia_qs_example_shared::{
-    get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity, shared_behavior,
+    get_shared_config, manifest_load, PointEntity, PointEntityColor, ExampleEvent, ExampleEntity, shared_behavior,
 };
 
 use std::{net::SocketAddr, rc::Rc, time::Duration};
@@ -63,7 +63,13 @@ async fn main() {
                             let x = random::gen_range_u32(0, 80) * 16;
                             let y = random::gen_range_u32(0, 45) * 16;
 
-                            let new_entity = PointEntity::new(x as u16, y as u16).wrap();
+                            let entity_color = match server.get_users_count() % 3 {
+                                0 => PointEntityColor::Red,
+                                1 => PointEntityColor::Blue,
+                                _ => PointEntityColor::Yellow,
+                            };
+
+                            let new_entity = PointEntity::new(x as u16, y as u16, entity_color).wrap();
                             let new_entity_key = server.register_entity(ExampleEntity::PointEntity(new_entity.clone()));
                             server.room_add_entity(&main_room_key, &new_entity_key);
                             server.assign_pawn(&user_key, &new_entity_key);

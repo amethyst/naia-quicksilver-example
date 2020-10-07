@@ -6,7 +6,7 @@ use std::{
 
 use crate::{PointEntity, KeyCommand};
 
-const SQUARE_SPEED: u16 = 32;
+const SQUARE_SPEED: u16 = 8;
 
 pub fn process_command(key_command: &KeyCommand, point_entity: &Rc<RefCell<PointEntity>>) {
     let old_x: u16;
