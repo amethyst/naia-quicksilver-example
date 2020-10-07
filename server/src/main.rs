@@ -64,9 +64,9 @@ async fn main() {
                             let y = random::gen_range_u32(0, 45) * 16;
 
                             let entity_color = match server.get_users_count() % 3 {
-                                0 => PointEntityColor::Red,
-                                1 => PointEntityColor::Blue,
-                                _ => PointEntityColor::Yellow,
+                                0 => PointEntityColor::Yellow,
+                                1 => PointEntityColor::Red,
+                                _ => PointEntityColor::Blue,
                             };
 
                             let new_entity = PointEntity::new(x as u16, y as u16, entity_color).wrap();

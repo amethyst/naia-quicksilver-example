@@ -19,8 +19,8 @@ impl Default for PointEntityColor {
 #[derive(Entity)]
 #[type_name = "ExampleEntity"]
 pub struct PointEntity {
-    #[interpolate] pub x: Property<u16>,
-    #[interpolate] pub y: Property<u16>,
+    #[interpolate] #[predict] pub x: Property<u16>,
+    #[interpolate] #[predict] pub y: Property<u16>,
     pub color: Property<PointEntityColor>
 }
 
