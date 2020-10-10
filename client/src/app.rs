@@ -76,15 +76,14 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
         let s = input.key_down(Key::S);
         let a = input.key_down(Key::A);
         let d = input.key_down(Key::D);
-        if w || s || a || d {
-            if let Some(command) = &mut queued_command {
-                if w { command.w.set(true); }
-                if s { command.s.set(true); }
-                if a { command.a.set(true); }
-                if d { command.d.set(true); }
-            } else {
-                queued_command = Some(KeyCommand::new(w, s, a, d));
-            }
+
+        if let Some(command) = &mut queued_command {
+            if w { command.w.set(true); }
+            if s { command.s.set(true); }
+            if a { command.a.set(true); }
+            if d { command.d.set(true); }
+        } else {
+            queued_command = Some(KeyCommand::new(w, s, a, d));
         }
 
         // naia update

@@ -3,13 +3,13 @@ extern crate log;
 
 use simple_logger;
 
-use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, random};
+use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, UserKey, EntityKey, random};
 
 use naia_qs_example_shared::{
     get_shared_config, manifest_load, PointEntity, PointEntityColor, ExampleEvent, ExampleEntity, shared_behavior,
 };
 
-use std::{net::SocketAddr, rc::Rc, time::Duration};
+use std::{net::SocketAddr, rc::Rc, time::Duration, collections::HashMap};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -51,6 +51,9 @@ async fn main() {
         }
     })));
 
+    let mut user_to_pawn_map = HashMap::<UserKey, EntityKey>::new();
+    let mut received_command = false;
+
     loop {
         match server.receive().await {
             Ok(event) => {
@@ -73,10 +76,17 @@ async fn main() {
                             let new_entity_key = server.register_entity(ExampleEntity::PointEntity(new_entity.clone()));
                             server.room_add_entity(&main_room_key, &new_entity_key);
                             server.assign_pawn(&user_key, &new_entity_key);
+                            user_to_pawn_map.insert(user_key, new_entity_key);
                         }
                     }
-                    ServerEvent::Disconnection(_, user) => {
+                    ServerEvent::Disconnection(user_key, user) => {
                         info!("Naia Server disconnected from: {:?}", user.address);
+                        server.room_remove_user(&main_room_key, &user_key);
+                        if let Some(entity_key) = user_to_pawn_map.remove(&user_key) {
+                            server.room_remove_entity(&main_room_key, &entity_key);
+                            server.unassign_pawn(&user_key, &entity_key);
+                            server.deregister_entity(entity_key);
+                        }
                     }
                     ServerEvent::Command(_, entity_key, command_type) => {
                         match command_type {
@@ -85,6 +95,7 @@ async fn main() {
                                     match typed_entity {
                                         ExampleEntity::PointEntity(entity) => {
                                             shared_behavior::process_command(&key_command, entity);
+                                            received_command = true;
                                         }
                                     }
                                 }
@@ -93,6 +104,10 @@ async fn main() {
                         }
                     }
                     ServerEvent::Tick => {
+                        if !received_command {
+                            println!("NO COMMANDS THIS TICK :(");
+                        }
+                        received_command = false;
                         server.send_all_updates().await;
                         //info!("tick");
                     }
