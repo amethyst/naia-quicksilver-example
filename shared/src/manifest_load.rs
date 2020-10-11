@@ -1,13 +1,13 @@
 
 use naia_shared::Manifest;
 
-use crate::{AuthEvent, ExampleEntity, ExampleEvent, PointEntity, KeyCommand};
+use crate::{AuthEvent, ExampleActor, ExampleEvent, PointActor, KeyCommand};
 
-pub fn manifest_load() -> Manifest<ExampleEvent, ExampleEntity> {
-    let mut manifest = Manifest::<ExampleEvent, ExampleEntity>::new();
+pub fn manifest_load() -> Manifest<ExampleEvent, ExampleActor> {
+    let mut manifest = Manifest::<ExampleEvent, ExampleActor>::new();
 
     manifest.register_event(AuthEvent::get_builder());
-    manifest.register_pawn(PointEntity::get_builder(), KeyCommand::get_builder());
+    manifest.register_pawn(PointActor::get_builder(), KeyCommand::get_builder());
 
     manifest
 }

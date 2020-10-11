@@ -5,7 +5,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
-use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior, PointEntityColor};
+use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleActor, ExampleEvent, KeyCommand, shared_behavior, PointActorColor};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -36,7 +36,7 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
                 // Put your Server's IP Address here!, can't easily find this automatically from the browser
-                let server_ip_address: IpAddr = "192.168.1.2".parse().expect("couldn't parse input IP address");
+                let server_ip_address: IpAddr = "192.168.1.5".parse().expect("couldn't parse input IP address");
             } else {
                 let server_ip_address = find_my_ip_address().expect("can't find ip address");
             }
@@ -117,10 +117,10 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                 ClientEvent::Command(pawn_key, command_type) => {
                                     match command_type {
                                         ExampleEvent::KeyCommand(key_command) => {
-                                            if let Some(typed_entity) = client.get_pawn_mut(&pawn_key) {
-                                                match typed_entity {
-                                                    ExampleEntity::PointEntity(entity) => {
-                                                        shared_behavior::process_command(&key_command, entity);
+                                            if let Some(typed_actor) = client.get_pawn_mut(&pawn_key) {
+                                                match typed_actor {
+                                                    ExampleActor::PointActor(actor) => {
+                                                        shared_behavior::process_command(&key_command, actor);
                                                     }
                                                 }
                                             }
@@ -153,19 +153,19 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
 
             gfx.clear(Color::BLACK);
 
-            for entity_key in client.entity_keys().unwrap() {
-                if let Some(entity) = client.get_entity(&entity_key) {
-                    match entity {
-                        ExampleEntity::PointEntity(point_entity) => {
+            for actor_key in client.actor_keys().unwrap() {
+                if let Some(actor) = client.get_actor(&actor_key) {
+                    match actor {
+                        ExampleActor::PointActor(point_actor) => {
                             let rect = Rectangle::new(
                                 Vector::new(
-                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
-                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
+                                    f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                    f32::from(*(point_actor.as_ref().borrow().y.get()))),
                                 square_size);
-                            match point_entity.as_ref().borrow().color.get() {
-                                PointEntityColor::Red => gfx.fill_rect(&rect, Color::RED),
-                                PointEntityColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
-                                PointEntityColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
+                            match point_actor.as_ref().borrow().color.get() {
+                                PointActorColor::Red => gfx.fill_rect(&rect, Color::RED),
+                                PointActorColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
+                                PointActorColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
                             }
                         }
                     }
@@ -173,13 +173,13 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
             }
 
             for pawn_key in client.pawn_keys().unwrap() {
-                if let Some(entity) = client.get_pawn(&pawn_key) {
-                    match entity {
-                        ExampleEntity::PointEntity(point_entity) => {
+                if let Some(actor) = client.get_pawn(&pawn_key) {
+                    match actor {
+                        ExampleActor::PointActor(point_actor) => {
                             let rect = Rectangle::new(
                                 Vector::new(
-                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
-                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
+                                    f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                    f32::from(*(point_actor.as_ref().borrow().y.get()))),
                                 square_size);
                             gfx.fill_rect(&rect, Color::WHITE);
                         }
