@@ -3,13 +3,13 @@ extern crate log;
 
 use simple_logger;
 
-use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, random};
+use naia_server::{find_my_ip_address, NaiaServer, ServerConfig, ServerEvent, UserKey, ActorKey, random};
 
 use naia_qs_example_shared::{
-    get_shared_config, manifest_load, PointEntity, ExampleEvent, ExampleEntity, shared_behavior,
+    get_shared_config, manifest_load, PointActor, PointActorColor, ExampleEvent, ExampleActor, shared_behavior,
 };
 
-use std::{net::SocketAddr, rc::Rc, time::Duration};
+use std::{net::SocketAddr, rc::Rc, time::Duration, collections::HashMap};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -45,11 +45,13 @@ async fn main() {
 
     let main_room_key = server.create_room();
 
-    server.on_scope_entity(Rc::new(Box::new(|_, _, _, entity| match entity {
-        ExampleEntity::PointEntity(_) => {
+    server.on_scope_actor(Rc::new(Box::new(|_, _, _, actor| match actor {
+        ExampleActor::PointActor(_) => {
             return true;
         }
     })));
+
+    let mut user_to_pawn_map = HashMap::<UserKey, ActorKey>::new();
 
     loop {
         match server.receive().await {
@@ -63,22 +65,35 @@ async fn main() {
                             let x = random::gen_range_u32(0, 80) * 16;
                             let y = random::gen_range_u32(0, 45) * 16;
 
-                            let new_entity = PointEntity::new(x as u16, y as u16).wrap();
-                            let new_entity_key = server.register_entity(ExampleEntity::PointEntity(new_entity.clone()));
-                            server.room_add_entity(&main_room_key, &new_entity_key);
-                            server.assign_pawn(&user_key, &new_entity_key);
+                            let actor_color = match server.get_users_count() % 3 {
+                                0 => PointActorColor::Yellow,
+                                1 => PointActorColor::Red,
+                                _ => PointActorColor::Blue,
+                            };
+
+                            let new_actor = PointActor::new(x as u16, y as u16, actor_color).wrap();
+                            let new_actor_key = server.register_actor(ExampleActor::PointActor(new_actor.clone()));
+                            server.room_add_actor(&main_room_key, &new_actor_key);
+                            server.assign_pawn(&user_key, &new_actor_key);
+                            user_to_pawn_map.insert(user_key, new_actor_key);
                         }
                     }
-                    ServerEvent::Disconnection(_, user) => {
+                    ServerEvent::Disconnection(user_key, user) => {
                         info!("Naia Server disconnected from: {:?}", user.address);
+                        server.room_remove_user(&main_room_key, &user_key);
+                        if let Some(actor_key) = user_to_pawn_map.remove(&user_key) {
+                            server.room_remove_actor(&main_room_key, &actor_key);
+                            server.unassign_pawn(&user_key, &actor_key);
+                            server.deregister_actor(actor_key);
+                        }
                     }
-                    ServerEvent::Command(_, entity_key, command_type) => {
+                    ServerEvent::Command(_, actor_key, command_type) => {
                         match command_type {
                             ExampleEvent::KeyCommand(key_command) => {
-                                if let Some(typed_entity) = server.get_entity(entity_key) {
-                                    match typed_entity {
-                                        ExampleEntity::PointEntity(entity) => {
-                                            shared_behavior::process_command(&key_command, entity);
+                                if let Some(typed_actor) = server.get_actor(actor_key) {
+                                    match typed_actor {
+                                        ExampleActor::PointActor(actor) => {
+                                            shared_behavior::process_command(&key_command, actor);
                                         }
                                     }
                                 }

@@ -5,7 +5,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use naia_client::{ClientConfig, ClientEvent, NaiaClient};
 
-use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleEntity, ExampleEvent, KeyCommand, shared_behavior};
+use naia_qs_example_shared::{get_shared_config, manifest_load, AuthEvent, ExampleActor, ExampleEvent, KeyCommand, shared_behavior, PointActorColor};
 
 const SERVER_PORT: u16 = 14191;
 
@@ -20,7 +20,6 @@ cfg_if! {
 extern crate quicksilver;
 
 use quicksilver::{geom::{Rectangle, Vector}, graphics::{Color, Graphics}, input::{Input, Key}, Result, Settings, Window, Timer};
-use quicksilver::geom::Circle;
 
 pub fn get_settings() -> Settings {
     let mut settings = Settings::default();
@@ -52,30 +51,46 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     let auth = ExampleEvent::AuthEvent(AuthEvent::new("charlie", "12345"));
 
     let mut client = NaiaClient::new(
-            server_socket_address,
-            manifest_load(),
-            Some(client_config),
-            get_shared_config(),
-            Some(auth),
-        );
+        server_socket_address,
+        manifest_load(),
+        Some(client_config),
+        get_shared_config(),
+        Some(auth),
+    );
 
     // Quicksilver
 
     let square_size = Vector::new(32.0, 32.0);
 
-    let mut update_timer = Timer::time_per_second(30.0);
-    let mut draw_timer = Timer::time_per_second(60.0);
+    let mut frame_timer = Timer::time_per_second(60.0);
 
-    let mut pawn_key: u16 = 999;
+    let mut pawn_key: Option<u16> = None;
+    let mut queued_command: Option<KeyCommand> = None;
 
     loop {
         while let Some(_) = input.next_event().await {}
 
-        // naia update
-        while update_timer.tick() {
+        if frame_timer.exhaust().is_some() {
+
+            // input
+            let w = input.key_down(Key::W);
+            let s = input.key_down(Key::S);
+            let a = input.key_down(Key::A);
+            let d = input.key_down(Key::D);
+
+            if let Some(command) = &mut queued_command {
+                if w { command.w.set(true); }
+                if s { command.s.set(true); }
+                if a { command.a.set(true); }
+                if d { command.d.set(true); }
+            } else {
+                queued_command = Some(KeyCommand::new(w, s, a, d));
+            }
+
+            // update
             loop {
-                match client.receive() {
-                    Some(result) => match result {
+                if let Some(result) = client.receive() {
+                    match result {
                         Ok(event) => {
                             match event {
                                 ClientEvent::Connection => {
@@ -84,47 +99,28 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                                 ClientEvent::Disconnection => {
                                     info!("Client disconnected from: {}", client.server_address());
                                 }
-                                ClientEvent::CreateEntity(local_key) => {
-                                    if let Some(entity) = client.get_entity(local_key) {
-                                        match entity {
-                                            ExampleEntity::PointEntity(point_entity) => {
-                                                info!("creation of point entity with key: {}, x: {}, y: {}",
-                                                      local_key,
-                                                      point_entity.as_ref().borrow().x.get(),
-                                                      point_entity.as_ref().borrow().y.get(),
-                                                );
-                                            }
+                                ClientEvent::Tick => {
+                                    if let Some(pawn_key) = pawn_key {
+                                        if let Some(command) = queued_command.take() {
+                                            client.send_command(pawn_key, &command);
                                         }
                                     }
                                 }
-                                ClientEvent::DeleteEntity(local_key) => {
-                                    info!("deletion of point entity with key: {}", local_key);
-                                }
-                                ClientEvent::Tick => {
-                                    let w = input.key_down(Key::W);
-                                    let s = input.key_down(Key::S);
-                                    let a = input.key_down(Key::A);
-                                    let d = input.key_down(Key::D);
-                                    if w || s || a || d {
-                                        let new_command = KeyCommand::new(w, s, a, d);
-                                        client.send_command(pawn_key, &new_command);
-                                    }
-                                }
                                 ClientEvent::AssignPawn(local_key) => {
-                                    pawn_key = local_key;
+                                    pawn_key = Some(local_key);
                                     info!("assign pawn");
                                 }
                                 ClientEvent::UnassignPawn(_) => {
-                                    pawn_key = 999;
+                                    pawn_key = None;
                                     info!("unassign pawn");
                                 }
                                 ClientEvent::Command(pawn_key, command_type) => {
                                     match command_type {
                                         ExampleEvent::KeyCommand(key_command) => {
-                                            if let Some(typed_entity) = client.get_pawn(pawn_key) {
-                                                match typed_entity {
-                                                    ExampleEntity::PointEntity(entity) => {
-                                                        shared_behavior::process_command(&key_command, entity);
+                                            if let Some(typed_actor) = client.get_pawn_mut(&pawn_key) {
+                                                match typed_actor {
+                                                    ExampleActor::PointActor(actor) => {
+                                                        shared_behavior::process_command(&key_command, actor);
                                                     }
                                                 }
                                             }
@@ -138,56 +134,48 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                         Err(err) => {
                             info!("Client Error: {}", err);
                         }
-                    },
-                    None => { break; }
+                    }
+                } else {
+                    break;
                 }
             }
-        }
 
-        // drawing
-        if draw_timer.exhaust().is_some() {
+            // drawing
             gfx.clear(Color::BLACK);
 
-            if let Some(iter) = client.entities_iter() {
-                for (_, entity) in iter {
-                    match entity {
-                        ExampleEntity::PointEntity(point_entity) => {
-                            let rect = Rectangle::new(
-                                Vector::new(
-                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
-                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
-                                square_size);
-                            gfx.fill_rect(&rect, Color::RED);
+            if client.has_connection() {
+                // draw actors
+                for actor_key in client.actor_keys().unwrap() {
+                    if let Some(actor) = client.get_actor(&actor_key) {
+                        match actor {
+                            ExampleActor::PointActor(point_actor) => {
+                                let rect = Rectangle::new(
+                                    Vector::new(
+                                        f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                        f32::from(*(point_actor.as_ref().borrow().y.get()))),
+                                    square_size);
+                                match point_actor.as_ref().borrow().color.get() {
+                                    PointActorColor::Red => gfx.fill_rect(&rect, Color::RED),
+                                    PointActorColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
+                                    PointActorColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            if let Some(iter) = client.pawns_iter() {
-                for (_, entity) in iter {
-                    match entity {
-                        ExampleEntity::PointEntity(point_entity) => {
-                            let rect = Rectangle::new(
-                                Vector::new(
-                                    f32::from(*(point_entity.as_ref().borrow().x.get())),
-                                    f32::from(*(point_entity.as_ref().borrow().y.get()))),
-                                square_size);
-                            gfx.fill_rect(&rect, Color::WHITE);
-                        }
-                    }
-                }
-            }
-
-            if let Some(iter) = client.pawn_history_iter(&pawn_key) {
-                for entity in iter {
-                    match entity {
-                        ExampleEntity::PointEntity(point_entity) => {
-                            let circle = Circle::new(
-                                Vector::new(
-                                    f32::from(*(point_entity.as_ref().borrow().x.get())) + 16.0,
-                                    f32::from(*(point_entity.as_ref().borrow().y.get())) + 16.0),
-                                4.0);
-                            gfx.stroke_circle(&circle, Color::YELLOW);
+                // draw pawns
+                for pawn_key in client.pawn_keys().unwrap() {
+                    if let Some(actor) = client.get_pawn(&pawn_key) {
+                        match actor {
+                            ExampleActor::PointActor(point_actor) => {
+                                let rect = Rectangle::new(
+                                    Vector::new(
+                                        f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                        f32::from(*(point_actor.as_ref().borrow().y.get()))),
+                                    square_size);
+                                gfx.fill_rect(&rect, Color::WHITE);
+                            }
                         }
                     }
                 }
