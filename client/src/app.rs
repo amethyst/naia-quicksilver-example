@@ -51,19 +51,18 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     let auth = ExampleEvent::AuthEvent(AuthEvent::new("charlie", "12345"));
 
     let mut client = NaiaClient::new(
-            server_socket_address,
-            manifest_load(),
-            Some(client_config),
-            get_shared_config(),
-            Some(auth),
-        );
+        server_socket_address,
+        manifest_load(),
+        Some(client_config),
+        get_shared_config(),
+        Some(auth),
+    );
 
     // Quicksilver
 
     let square_size = Vector::new(32.0, 32.0);
 
-    let mut update_timer = Timer::time_per_second(60.0);
-    let mut draw_timer = Timer::time_per_second(60.0);
+    let mut frame_timer = Timer::time_per_second(60.0);
 
     let mut pawn_key: Option<u16> = None;
     let mut queued_command: Option<KeyCommand> = None;
@@ -71,26 +70,27 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
     loop {
         while let Some(_) = input.next_event().await {}
 
-        // Queue up key commands
-        let w = input.key_down(Key::W);
-        let s = input.key_down(Key::S);
-        let a = input.key_down(Key::A);
-        let d = input.key_down(Key::D);
+        if frame_timer.exhaust().is_some() {
 
-        if let Some(command) = &mut queued_command {
-            if w { command.w.set(true); }
-            if s { command.s.set(true); }
-            if a { command.a.set(true); }
-            if d { command.d.set(true); }
-        } else {
-            queued_command = Some(KeyCommand::new(w, s, a, d));
-        }
+            // input
+            let w = input.key_down(Key::W);
+            let s = input.key_down(Key::S);
+            let a = input.key_down(Key::A);
+            let d = input.key_down(Key::D);
 
-        // naia update
-        if update_timer.exhaust().is_some() {
+            if let Some(command) = &mut queued_command {
+                if w { command.w.set(true); }
+                if s { command.s.set(true); }
+                if a { command.a.set(true); }
+                if d { command.d.set(true); }
+            } else {
+                queued_command = Some(KeyCommand::new(w, s, a, d));
+            }
+
+            // update
             loop {
-                match client.receive() {
-                    Some(result) => match result {
+                if let Some(result) = client.receive() {
+                    match result {
                         Ok(event) => {
                             match event {
                                 ClientEvent::Connection => {
@@ -134,54 +134,48 @@ pub async fn app(window: Window, mut gfx: Graphics, mut input: Input) -> Result<
                         Err(err) => {
                             info!("Client Error: {}", err);
                         }
-                    },
-                    None => {
-                        break;
                     }
+                } else {
+                    break;
                 }
             }
-        }
 
-        if !client.has_connection() {
-            continue;
-        }
-
-        // drawing
-        if draw_timer.exhaust().is_some() {
-
-            client.frame_begin();
-
+            // drawing
             gfx.clear(Color::BLACK);
 
-            for actor_key in client.actor_keys().unwrap() {
-                if let Some(actor) = client.get_actor(&actor_key) {
-                    match actor {
-                        ExampleActor::PointActor(point_actor) => {
-                            let rect = Rectangle::new(
-                                Vector::new(
-                                    f32::from(*(point_actor.as_ref().borrow().x.get())),
-                                    f32::from(*(point_actor.as_ref().borrow().y.get()))),
-                                square_size);
-                            match point_actor.as_ref().borrow().color.get() {
-                                PointActorColor::Red => gfx.fill_rect(&rect, Color::RED),
-                                PointActorColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
-                                PointActorColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
+            if client.has_connection() {
+                // draw actors
+                for actor_key in client.actor_keys().unwrap() {
+                    if let Some(actor) = client.get_actor(&actor_key) {
+                        match actor {
+                            ExampleActor::PointActor(point_actor) => {
+                                let rect = Rectangle::new(
+                                    Vector::new(
+                                        f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                        f32::from(*(point_actor.as_ref().borrow().y.get()))),
+                                    square_size);
+                                match point_actor.as_ref().borrow().color.get() {
+                                    PointActorColor::Red => gfx.fill_rect(&rect, Color::RED),
+                                    PointActorColor::Blue => gfx.fill_rect(&rect, Color::BLUE),
+                                    PointActorColor::Yellow => gfx.fill_rect(&rect, Color::YELLOW),
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            for pawn_key in client.pawn_keys().unwrap() {
-                if let Some(actor) = client.get_pawn(&pawn_key) {
-                    match actor {
-                        ExampleActor::PointActor(point_actor) => {
-                            let rect = Rectangle::new(
-                                Vector::new(
-                                    f32::from(*(point_actor.as_ref().borrow().x.get())),
-                                    f32::from(*(point_actor.as_ref().borrow().y.get()))),
-                                square_size);
-                            gfx.fill_rect(&rect, Color::WHITE);
+                // draw pawns
+                for pawn_key in client.pawn_keys().unwrap() {
+                    if let Some(actor) = client.get_pawn(&pawn_key) {
+                        match actor {
+                            ExampleActor::PointActor(point_actor) => {
+                                let rect = Rectangle::new(
+                                    Vector::new(
+                                        f32::from(*(point_actor.as_ref().borrow().x.get())),
+                                        f32::from(*(point_actor.as_ref().borrow().y.get()))),
+                                    square_size);
+                                gfx.fill_rect(&rect, Color::WHITE);
+                            }
                         }
                     }
                 }

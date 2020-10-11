@@ -52,7 +52,6 @@ async fn main() {
     })));
 
     let mut user_to_pawn_map = HashMap::<UserKey, ActorKey>::new();
-    let mut received_command = false;
 
     loop {
         match server.receive().await {
@@ -95,7 +94,6 @@ async fn main() {
                                     match typed_actor {
                                         ExampleActor::PointActor(actor) => {
                                             shared_behavior::process_command(&key_command, actor);
-                                            received_command = true;
                                         }
                                     }
                                 }
@@ -104,10 +102,6 @@ async fn main() {
                         }
                     }
                     ServerEvent::Tick => {
-                        if !received_command {
-                            println!("NO COMMANDS THIS TICK :(");
-                        }
-                        received_command = false;
                         server.send_all_updates().await;
                         //info!("tick");
                     }
