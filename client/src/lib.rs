@@ -17,7 +17,7 @@ cfg_if! {
 
         #[wasm_bindgen(start)]
         pub fn main_js() {
-            web_logger::custom_init(web_logger::Config { level: log::Level::Info });
+            wasm_logger::init(wasm_logger::Config::default());
 
             run(get_settings(), app)
         }
